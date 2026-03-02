@@ -4,7 +4,6 @@ import logging
 import threading
 from dotenv import load_dotenv
 import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 import database as db
 
@@ -30,114 +29,12 @@ MONTHS_UZ = [
     "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr",
 ]
 
-# ---- Short ID mapping (Telegram callback_data max 64 bytes) ----
-_id_map = {}
-
-
-def shorten(uuid_str):
-    key = uuid_str.replace("-", "")[:8]
-    _id_map[key] = uuid_str
-    return key
-
-
-def expand(key):
-    return _id_map.get(key, key)
-
-
-# ---- Message builders ----
-
-def build_poll_keyboard(poll_id, workers):
-    markup = InlineKeyboardMarkup(row_width=1)
-    sp = shorten(poll_id)
-    for w in workers:
-        sw = shorten(w["id"])
-        markup.add(
-            InlineKeyboardButton(
-                text=w["name"],
-                callback_data=f"v:{sp}:{sw}",
-            )
-        )
-    return markup
-
-
-def build_poll_text(category_name, month, year, vote_counts, total_votes):
-    """Clear bilingual poll question."""
-    month_en = MONTHS_EN[month] if 1 <= month <= 12 else str(month)
-    month_uz = MONTHS_UZ[month] if 1 <= month <= 12 else str(month)
-
-    lines = [
-        f"🏆 *{category_name}*",
-        f"━━━━━━━━━━━━━━━━━━━━━",
-        f"📅 {month_en} {year} / {month_uz} {year}",
-        "",
-        f"❓ Who is the best {category_name}?",
-        f"❓ Eng yaxshi {category_name} kim?",
-        "",
-    ]
-
-    if total_votes == 0:
-        lines.append("👇 _Tap a name below to vote_")
-        lines.append("👇 _Ovoz berish uchun ismni bosing_")
-    else:
-        sorted_workers = sorted(vote_counts.values(), key=lambda x: x["count"], reverse=True)
-        for i, w in enumerate(sorted_workers):
-            bar_length = int((w["count"] / total_votes) * 10) if total_votes > 0 else 0
-            bar = "▓" * bar_length + "░" * (10 - bar_length)
-            medal = ["🥇", "🥈", "🥉"][i] if i < 3 else "▪️"
-            lines.append(f"{medal} {w['name']}  {bar}  *{w['count']}*")
-
-        lines.append(f"\n📊 Total / Jami: *{total_votes}*")
-        lines.append("")
-        lines.append("👇 _Tap to vote or change your vote_")
-        lines.append("👇 _Ovoz bering yoki o'zgartiring_")
-
-    return "\n".join(lines)
-
-
-def build_closed_text(category_name, month, year, vote_counts, total_votes):
-    """Final results after poll closes — no buttons."""
-    month_en = MONTHS_EN[month] if 1 <= month <= 12 else str(month)
-    month_uz = MONTHS_UZ[month] if 1 <= month <= 12 else str(month)
-
-    lines = [
-        f"🔒 *{category_name}*",
-        f"━━━━━━━━━━━━━━━━━━━━━",
-        f"📅 {month_en} {year} / {month_uz} {year}",
-        "",
-        "⛔ Voting closed / Ovoz berish yopildi",
-        "",
-    ]
-
-    if total_votes == 0:
-        lines.append("📭 No votes were cast / Ovoz berilmadi")
-    else:
-        sorted_workers = sorted(vote_counts.values(), key=lambda x: x["count"], reverse=True)
-
-        winner = sorted_workers[0]
-        lines.append(f"🏆 *Winner / G'olib: {winner['name']}*")
-        lines.append(f"🗳 {winner['count']} votes / ovoz")
-        lines.append("")
-        lines.append("📊 Final results / Yakuniy natijalar:")
-        lines.append("")
-
-        for i, w in enumerate(sorted_workers):
-            bar_length = int((w["count"] / total_votes) * 10) if total_votes > 0 else 0
-            bar = "▓" * bar_length + "░" * (10 - bar_length)
-            medal = ["🥇", "🥈", "🥉"][i] if i < 3 else "▪️"
-            lines.append(f"{medal} {w['name']}  {bar}  *{w['count']}*")
-
-        lines.append(f"\n📊 Total / Jami: *{total_votes}*")
-
-    return "\n".join(lines)
-
 
 # ---- /start handler ----
 
 @bot.message_handler(commands=["start"])
 def handle_start(message):
-    """Register user and show active polls."""
     user = message.from_user
-
     db.register_user(user.id, message.chat.id, user.username or "", user.first_name or "")
     logger.info(f"User registered: {user.first_name} ({user.id})")
 
@@ -146,124 +43,124 @@ def handle_start(message):
     if not polls:
         bot.send_message(
             message.chat.id,
-            "🚛 *Unity Employee Evaluation*\n"
-            "━━━━━━━━━━━━━━━━━━━━━\n\n"
-            "👋 Welcome! / Xush kelibsiz!\n\n"
-            "📭 No active polls right now.\n"
+            "Unity Employee Evaluation\n\n"
+            "Welcome! / Xush kelibsiz!\n\n"
+            "No active polls right now.\n"
             "Hozircha faol ovoz berish yo'q.\n\n"
-            "🔔 You'll be notified when a new poll starts!\n"
-            "Yangi ovoz berish boshlanganida xabar beramiz!",
-            parse_mode="Markdown",
+            "You will be notified when a new poll starts.\n"
+            "Yangi ovoz berish boshlanganida xabar beramiz.",
         )
         return
 
     bot.send_message(
         message.chat.id,
-        "🚛 *Unity Employee Evaluation*\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "👋 Welcome! / Xush kelibsiz!\n\n"
-        "📋 Active polls below — tap a name to vote!\n"
-        "Quyida faol ovozlar — ismni bosing!",
-        parse_mode="Markdown",
+        "Unity Employee Evaluation\n\n"
+        "Welcome! / Xush kelibsiz!\n\n"
+        "Active polls below. Vote and forward to others!\n"
+        "Quyida faol ovozlar. Ovoz bering va boshqalarga yuboring!",
     )
 
     for poll in polls:
         send_poll_to_user(poll, message.chat.id)
 
 
+# ---- Send native Telegram poll ----
+
 def send_poll_to_user(poll, chat_id):
-    """Send a single poll to a user and track the message."""
+    """Send a native Telegram poll to a user."""
     category_name = poll["categories"]["name"] if poll.get("categories") else "Unknown"
     workers = db.get_workers_for_category(poll["category_id"])
 
-    if not workers:
+    if len(workers) < 2:
+        logger.warning(f"Skipping poll {category_name}: need at least 2 workers")
         return
 
-    vote_counts = db.get_vote_counts(poll["id"])
-    total_votes = sum(v["count"] for v in vote_counts.values())
-    text = build_poll_text(category_name, poll["month"], poll["year"], vote_counts, total_votes)
-    keyboard = build_poll_keyboard(poll["id"], workers)
+    month_en = MONTHS_EN[poll["month"]] if 1 <= poll["month"] <= 12 else str(poll["month"])
+    month_uz = MONTHS_UZ[poll["month"]] if 1 <= poll["month"] <= 12 else str(poll["month"])
+
+    question = (
+        f"{category_name}\n"
+        f"{month_en} {poll['year']} / {month_uz} {poll['year']}"
+    )
+
+    options = [w["name"] for w in workers]
+    worker_ids = [w["id"] for w in workers]
 
     try:
-        sent = bot.send_message(chat_id, text, reply_markup=keyboard, parse_mode="Markdown")
-        db.save_poll_message(poll["id"], chat_id, sent.message_id)
+        sent = bot.send_poll(
+            chat_id,
+            question=question,
+            options=options,
+            is_anonymous=False,
+            allows_multiple_answers=False,
+            type="regular",
+        )
+
+        # Save worker order on the poll (first time only)
+        if not poll.get("worker_ids_order"):
+            db.save_worker_ids_order(poll["id"], worker_ids)
+            poll["worker_ids_order"] = worker_ids
+
+        # Track message + telegram poll ID mapping
+        db.save_poll_message(poll["id"], chat_id, sent.message_id, sent.poll.id)
+
     except Exception as e:
         logger.warning(f"Could not send poll to {chat_id}: {e}")
 
 
-# ---- Vote handler ----
+# ---- Vote handler (native poll) ----
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("v:"))
-def handle_vote(call):
-    parts = call.data.split(":")
-    if len(parts) != 3:
-        bot.answer_callback_query(call.id, "Invalid vote.")
+@bot.poll_answer_handler()
+def handle_poll_answer(poll_answer):
+    telegram_poll_id = poll_answer.poll_id
+    user = poll_answer.user
+    option_ids = poll_answer.option_ids
+
+    # Look up our poll via the telegram poll ID
+    poll = db.get_poll_by_telegram_poll_id(telegram_poll_id)
+    if not poll:
+        logger.warning(f"Unknown telegram poll: {telegram_poll_id}")
         return
 
-    poll_id = expand(parts[1])
-    worker_id = expand(parts[2])
+    poll_id = poll["id"]
+    worker_ids_order = poll.get("worker_ids_order") or []
 
-    if not db.is_poll_active(poll_id):
-        bot.answer_callback_query(
-            call.id,
-            "⛔ Voting is closed!\n⛔ Ovoz berish yopilgan!",
-            show_alert=True,
-        )
+    # User retracted their vote
+    if not option_ids:
+        db.delete_vote(poll_id, user.id)
+        logger.info(f"Vote retracted: {user.first_name} ({user.id})")
         return
 
-    user = call.from_user
+    # Map option index to worker ID
+    option_index = option_ids[0]
+    if option_index >= len(worker_ids_order):
+        logger.warning(f"Invalid option index {option_index} for poll {poll_id}")
+        return
+
+    worker_id = worker_ids_order[option_index]
     db.upsert_vote(poll_id, worker_id, user.id, user.username or "", user.first_name or "")
 
-    # Refresh the message with updated counts
-    poll = db.get_poll_by_id(poll_id)
-    if not poll:
-        bot.answer_callback_query(call.id, "Poll not found.")
-        return
-
-    category_name = poll["categories"]["name"] if poll.get("categories") else "Unknown"
+    # Find worker name for admin notification
     workers = db.get_workers_for_category(poll["category_id"])
-    vote_counts = db.get_vote_counts(poll_id)
-    total_votes = sum(v["count"] for v in vote_counts.values())
-
-    text = build_poll_text(category_name, poll["month"], poll["year"], vote_counts, total_votes)
-    keyboard = build_poll_keyboard(poll_id, workers)
-
-    try:
-        bot.edit_message_text(
-            text,
-            chat_id=call.message.chat.id,
-            message_id=call.message.message_id,
-            reply_markup=keyboard,
-            parse_mode="Markdown",
-        )
-    except Exception as e:
-        logger.debug(f"Could not edit message: {e}")
-
-    # Find voted worker name
     voted_worker_name = "Unknown"
     for w in workers:
         if w["id"] == worker_id:
             voted_worker_name = w["name"]
             break
 
-    bot.answer_callback_query(
-        call.id,
-        f"✅ {voted_worker_name}\n"
-        f"Your vote is saved! / Ovozingiz saqlandi!",
-    )
+    category_name = poll["categories"]["name"] if poll.get("categories") else "Unknown"
+    logger.info(f"Vote: {user.first_name} -> {voted_worker_name} ({category_name})")
 
     # Notify admin
     if ADMIN_TELEGRAM_ID and user.id != ADMIN_TELEGRAM_ID:
         try:
             bot.send_message(
                 ADMIN_TELEGRAM_ID,
-                f"🗳 *New Vote / Yangi ovoz*\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"📋 *{category_name}*\n"
-                f"👤 {user.first_name or 'Unknown'}"
+                f"New Vote\n\n"
+                f"Poll: {category_name}\n"
+                f"Voter: {user.first_name or 'Unknown'}"
                 f"{f' (@{user.username})' if user.username else ''}\n"
-                f"✅ → *{voted_worker_name}*",
-                parse_mode="Markdown",
+                f"Voted for: {voted_worker_name}",
             )
         except Exception as e:
             logger.warning(f"Could not notify admin: {e}")
@@ -272,7 +169,6 @@ def handle_vote(call):
 # ---- Background: broadcast new polls & auto-close after 24h ----
 
 def background_loop():
-    """Runs every 30 seconds to broadcast new polls and close expired ones."""
     while True:
         try:
             # 1. Broadcast new polls to all users
@@ -285,49 +181,36 @@ def background_loop():
 
                     for user in users:
                         send_poll_to_user(poll, user["chat_id"])
-                        time.sleep(0.05)  # Rate limit
+                        time.sleep(0.05)
 
                     db.mark_poll_broadcast(poll["id"])
 
-            # 2. Close expired polls (24h after creation)
+            # 2. Close expired polls (24h after broadcast)
             expired_polls = db.get_polls_to_expire()
             for poll in expired_polls:
                 category_name = poll["categories"]["name"] if poll.get("categories") else "Unknown"
                 logger.info(f"Auto-closing poll: {category_name} (24h expired)")
 
-                # Build final results
-                vote_counts = db.get_vote_counts(poll["id"])
-                total_votes = sum(v["count"] for v in vote_counts.values())
-                closed_text = build_closed_text(
-                    category_name, poll["month"], poll["year"], vote_counts, total_votes
-                )
-
-                # Remove buttons from all sent messages
+                # Stop native polls on all sent messages
                 messages = db.get_poll_messages(poll["id"])
                 for msg in messages:
                     try:
-                        bot.edit_message_text(
-                            closed_text,
-                            chat_id=msg["chat_id"],
-                            message_id=msg["message_id"],
-                            parse_mode="Markdown",
-                        )
+                        bot.stop_poll(msg["chat_id"], msg["message_id"])
                     except Exception as e:
-                        logger.debug(f"Could not edit message {msg['message_id']}: {e}")
+                        logger.debug(f"Could not stop poll {msg['message_id']}: {e}")
 
-                # Close poll in DB — this updates the web dashboard too
                 db.close_poll(poll["id"])
 
                 # Notify admin
+                vote_counts = db.get_vote_counts(poll["id"])
+                total_votes = sum(v["count"] for v in vote_counts.values())
                 if ADMIN_TELEGRAM_ID:
                     try:
                         bot.send_message(
                             ADMIN_TELEGRAM_ID,
-                            f"🔒 *Poll auto-closed (24h)*\n"
-                            f"━━━━━━━━━━━━━━━━━━━━━\n"
-                            f"📋 *{category_name}*\n"
-                            f"📊 Total votes / Jami: *{total_votes}*",
-                            parse_mode="Markdown",
+                            f"Poll closed (24h)\n\n"
+                            f"{category_name}\n"
+                            f"Total votes: {total_votes}",
                         )
                     except Exception:
                         pass
@@ -335,22 +218,26 @@ def background_loop():
         except Exception as e:
             logger.error(f"Background loop error: {e}")
 
-        time.sleep(30)  # Check every 30 seconds
+        time.sleep(30)
 
 
 # ---- Main ----
 
 if __name__ == "__main__":
-    logger.info("Bot starting... Press Ctrl+C to stop.")
+    logger.info("Bot starting...")
     logger.info(f"Admin ID: {ADMIN_TELEGRAM_ID}")
 
     bg = threading.Thread(target=background_loop, daemon=True)
     bg.start()
-    logger.info("Background checker started (broadcasts new polls, auto-closes after 24h)")
+    logger.info("Background checker started")
 
     while True:
         try:
-            bot.infinity_polling(timeout=60, long_polling_timeout=60)
+            bot.infinity_polling(
+                timeout=60,
+                long_polling_timeout=60,
+                allowed_updates=["message", "poll_answer"],
+            )
         except Exception as e:
             logger.error(f"Bot crashed: {e}. Restarting in 5s...")
             time.sleep(5)

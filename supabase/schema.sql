@@ -28,6 +28,7 @@ create table polls (
   telegram_message_id bigint,
   telegram_chat_id bigint,
   broadcast_at timestamptz,
+  worker_ids_order jsonb,
   created_at timestamptz default now(),
   closed_at timestamptz,
   unique (category_id, month, year)
@@ -54,12 +55,13 @@ create table bot_users (
   joined_at timestamptz default now()
 );
 
--- Track which poll message was sent to which user (for removing buttons later)
+-- Track which poll message was sent to which user (for stopping polls later)
 create table poll_messages (
   id uuid primary key default gen_random_uuid(),
   poll_id uuid not null references polls(id) on delete cascade,
   chat_id bigint not null,
   message_id bigint not null,
+  telegram_poll_id text,
   sent_at timestamptz default now()
 );
 
