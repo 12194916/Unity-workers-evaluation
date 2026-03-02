@@ -82,7 +82,7 @@ export default function PollsPage() {
 
     const { error: err } = await supabase
       .from('polls')
-      .update({ status: 'active', closed_at: null })
+      .update({ status: 'active', closed_at: null, broadcast_at: null })
       .eq('id', pollId)
 
     if (err) {
