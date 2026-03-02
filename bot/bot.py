@@ -66,24 +66,30 @@ def build_poll_text(category_name, month, year, vote_counts, total_votes):
     month_uz = MONTHS_UZ[month] if 1 <= month <= 12 else str(month)
 
     lines = [
-        f"🏆 *Who is the best {category_name} for {month_en} {year}?*",
-        f"🏆 *{month_uz} {year} oyi uchun eng yaxshi {category_name} kim?*",
+        f"🏆 *{category_name}*",
+        f"━━━━━━━━━━━━━━━━━━━━━",
+        f"📅 {month_en} {year} / {month_uz} {year}",
         "",
-        "👇 Tap a name to vote / Ovoz berish uchun ismni bosing:",
+        f"❓ Who is the best {category_name}?",
+        f"❓ Eng yaxshi {category_name} kim?",
         "",
     ]
 
     if total_votes == 0:
-        lines.append("_No votes yet / Hali ovoz berilmagan_")
+        lines.append("👇 _Tap a name below to vote_")
+        lines.append("👇 _Ovoz berish uchun ismni bosing_")
     else:
         sorted_workers = sorted(vote_counts.values(), key=lambda x: x["count"], reverse=True)
         for i, w in enumerate(sorted_workers):
             bar_length = int((w["count"] / total_votes) * 10) if total_votes > 0 else 0
             bar = "▓" * bar_length + "░" * (10 - bar_length)
-            medal = ["🥇", "🥈", "🥉"][i] if i < 3 else "  "
-            lines.append(f"{medal} {w['name']}: {bar} *{w['count']}*")
+            medal = ["🥇", "🥈", "🥉"][i] if i < 3 else "▪️"
+            lines.append(f"{medal} {w['name']}  {bar}  *{w['count']}*")
 
-        lines.append(f"\n📊 Total votes / Jami ovozlar: *{total_votes}*")
+        lines.append(f"\n📊 Total / Jami: *{total_votes}*")
+        lines.append("")
+        lines.append("👇 _Tap to vote or change your vote_")
+        lines.append("👇 _Ovoz bering yoki o'zgartiring_")
 
     return "\n".join(lines)
 
@@ -94,28 +100,31 @@ def build_closed_text(category_name, month, year, vote_counts, total_votes):
     month_uz = MONTHS_UZ[month] if 1 <= month <= 12 else str(month)
 
     lines = [
-        f"🔒 *{category_name} — {month_en} {year}*",
-        f"Voting closed / Ovoz berish yopildi",
+        f"🔒 *{category_name}*",
+        f"━━━━━━━━━━━━━━━━━━━━━",
+        f"📅 {month_en} {year} / {month_uz} {year}",
+        "",
+        "⛔ Voting closed / Ovoz berish yopildi",
         "",
     ]
 
     if total_votes == 0:
-        lines.append("No votes were cast / Ovoz berilmadi")
+        lines.append("📭 No votes were cast / Ovoz berilmadi")
     else:
         sorted_workers = sorted(vote_counts.values(), key=lambda x: x["count"], reverse=True)
 
-        # Announce winner
         winner = sorted_workers[0]
-        lines.append(f"🏆 *Winner / G'olib: {winner['name']}* ({winner['count']} votes)")
+        lines.append(f"🏆 *Winner / G'olib: {winner['name']}*")
+        lines.append(f"🗳 {winner['count']} votes / ovoz")
         lines.append("")
-        lines.append("Final results / Yakuniy natijalar:")
+        lines.append("📊 Final results / Yakuniy natijalar:")
         lines.append("")
 
         for i, w in enumerate(sorted_workers):
             bar_length = int((w["count"] / total_votes) * 10) if total_votes > 0 else 0
             bar = "▓" * bar_length + "░" * (10 - bar_length)
-            medal = ["🥇", "🥈", "🥉"][i] if i < 3 else "  "
-            lines.append(f"{medal} {w['name']}: {bar} *{w['count']}*")
+            medal = ["🥇", "🥈", "🥉"][i] if i < 3 else "▪️"
+            lines.append(f"{medal} {w['name']}  {bar}  *{w['count']}*")
 
         lines.append(f"\n📊 Total / Jami: *{total_votes}*")
 
@@ -137,22 +146,24 @@ def handle_start(message):
     if not polls:
         bot.send_message(
             message.chat.id,
-            "👋 *Welcome to Unity Employee Evaluation!*\n"
-            "👋 *Unity xodimlarni baholash tizimiga xush kelibsiz!*\n\n"
-            "There are no active polls right now.\n"
+            "🚛 *Unity Employee Evaluation*\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "👋 Welcome! / Xush kelibsiz!\n\n"
+            "📭 No active polls right now.\n"
             "Hozircha faol ovoz berish yo'q.\n\n"
-            "You will receive polls automatically when they are created!\n"
-            "Yangi ovoz berish yaratilganda sizga avtomatik yuboriladi!",
+            "🔔 You'll be notified when a new poll starts!\n"
+            "Yangi ovoz berish boshlanganida xabar beramiz!",
             parse_mode="Markdown",
         )
         return
 
     bot.send_message(
         message.chat.id,
-        "👋 *Welcome to Unity Employee Evaluation!*\n"
-        "👋 *Unity xodimlarni baholash tizimiga xush kelibsiz!*\n\n"
-        "Here are the active polls — tap a name to vote:\n"
-        "Quyida faol ovoz berishlar — ovoz berish uchun ismni bosing:",
+        "🚛 *Unity Employee Evaluation*\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "👋 Welcome! / Xush kelibsiz!\n\n"
+        "📋 Active polls below — tap a name to vote!\n"
+        "Quyida faol ovozlar — ismni bosing!",
         parse_mode="Markdown",
     )
 
@@ -235,18 +246,23 @@ def handle_vote(call):
             voted_worker_name = w["name"]
             break
 
-    bot.answer_callback_query(call.id, f"✅ You voted for {voted_worker_name}!\n✅ Siz {voted_worker_name} ga ovoz berdingiz!")
+    bot.answer_callback_query(
+        call.id,
+        f"✅ {voted_worker_name}\n"
+        f"Your vote is saved! / Ovozingiz saqlandi!",
+    )
 
     # Notify admin
     if ADMIN_TELEGRAM_ID and user.id != ADMIN_TELEGRAM_ID:
         try:
             bot.send_message(
                 ADMIN_TELEGRAM_ID,
-                f"🗳 *New Vote / Yangi ovoz*\n\n"
-                f"📋 Poll: *{category_name}*\n"
-                f"👤 Voter: {user.first_name or 'Unknown'}"
+                f"🗳 *New Vote / Yangi ovoz*\n"
+                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                f"📋 *{category_name}*\n"
+                f"👤 {user.first_name or 'Unknown'}"
                 f"{f' (@{user.username})' if user.username else ''}\n"
-                f"✅ Voted for: *{voted_worker_name}*",
+                f"✅ → *{voted_worker_name}*",
                 parse_mode="Markdown",
             )
         except Exception as e:
@@ -307,9 +323,10 @@ def background_loop():
                     try:
                         bot.send_message(
                             ADMIN_TELEGRAM_ID,
-                            f"🔒 *Poll auto-closed (24h)*\n\n"
-                            f"📋 {category_name}\n"
-                            f"📊 Total votes: *{total_votes}*",
+                            f"🔒 *Poll auto-closed (24h)*\n"
+                            f"━━━━━━━━━━━━━━━━━━━━━\n"
+                            f"📋 *{category_name}*\n"
+                            f"📊 Total votes / Jami: *{total_votes}*",
                             parse_mode="Markdown",
                         )
                     except Exception:
