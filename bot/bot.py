@@ -79,8 +79,8 @@ def send_poll_to_user(poll, chat_id):
     month_uz = MONTHS_UZ[poll["month"]] if 1 <= poll["month"] <= 12 else str(poll["month"])
 
     question = (
-        f"{category_name}\n"
-        f"{month_en} {poll['year']} / {month_uz} {poll['year']}"
+        f"{month_uz} {poll['year']} oyi uchun {category_name} "
+        f"kimga ovoz berasiz?"
     )
 
     options = [w["name"] for w in workers]
