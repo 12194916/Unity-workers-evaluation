@@ -80,14 +80,18 @@ export default function PollsPage() {
   async function reopenPoll(pollId) {
     setError('')
 
+    // Clear old poll messages so bot sends fresh polls to all users
+    await supabase.from('poll_messages').delete().eq('poll_id', pollId)
+
     const { error: err } = await supabase
       .from('polls')
-      .update({ status: 'active', closed_at: null, broadcast_at: null })
+      .update({ status: 'active', closed_at: null, broadcast_at: null, worker_ids_order: null })
       .eq('id', pollId)
 
     if (err) {
       setError(err.message)
     } else {
+      setSuccess('Poll reopened! Bot will send it to all users shortly.')
       loadData()
     }
   }

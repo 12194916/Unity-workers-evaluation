@@ -132,6 +132,24 @@ def get_poll_messages(poll_id):
     return res.data or []
 
 
+def poll_already_sent(poll_id, chat_id):
+    """Check if a poll was already sent to this chat."""
+    res = (
+        supabase.table("poll_messages")
+        .select("id")
+        .eq("poll_id", poll_id)
+        .eq("chat_id", chat_id)
+        .limit(1)
+        .execute()
+    )
+    return bool(res.data)
+
+
+def clear_poll_messages(poll_id):
+    """Remove old poll message records so poll can be re-sent."""
+    supabase.table("poll_messages").delete().eq("poll_id", poll_id).execute()
+
+
 def get_poll_by_telegram_poll_id(telegram_poll_id):
     """Find our poll by the Telegram native poll ID."""
     res = (

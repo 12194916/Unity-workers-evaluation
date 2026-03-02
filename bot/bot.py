@@ -56,8 +56,8 @@ def handle_start(message):
         message.chat.id,
         "Unity Employee Evaluation\n\n"
         "Welcome! / Xush kelibsiz!\n\n"
-        "Active polls below. Vote and forward to others!\n"
-        "Quyida faol ovozlar. Ovoz bering va boshqalarga yuboring!",
+        "Active polls below. You can change your vote anytime.\n"
+        "Quyida faol ovozlar. Ovozingizni istalgan vaqt o'zgartirishingiz mumkin.",
     )
 
     for poll in polls:
@@ -75,12 +75,16 @@ def send_poll_to_user(poll, chat_id):
         logger.warning(f"Skipping poll {category_name}: need at least 2 workers")
         return
 
+    # Skip if already sent to this user for this poll
+    if db.poll_already_sent(poll["id"], chat_id):
+        return
+
     month_en = MONTHS_EN[poll["month"]] if 1 <= poll["month"] <= 12 else str(poll["month"])
     month_uz = MONTHS_UZ[poll["month"]] if 1 <= poll["month"] <= 12 else str(poll["month"])
 
     question = (
-        f"{month_uz} {poll['year']} oyi uchun {category_name} "
-        f"kimga ovoz berasiz?"
+        f"Who is the best {category_name} for {month_en} {poll['year']}?\n"
+        f"{month_uz} {poll['year']} oyi uchun {category_name} kimga ovoz berasiz?"
     )
 
     options = [w["name"] for w in workers]
@@ -179,11 +183,12 @@ def background_loop():
                     category_name = poll["categories"]["name"] if poll.get("categories") else "Unknown"
                     logger.info(f"Broadcasting poll: {category_name} to {len(users)} users")
 
+                    # Mark as broadcast FIRST so bot restart won't re-trigger
+                    db.mark_poll_broadcast(poll["id"])
+
                     for user in users:
                         send_poll_to_user(poll, user["chat_id"])
                         time.sleep(0.05)
-
-                    db.mark_poll_broadcast(poll["id"])
 
             # 2. Close expired polls (24h after broadcast)
             expired_polls = db.get_polls_to_expire()
