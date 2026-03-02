@@ -155,9 +155,6 @@ export default function PollsPage() {
                         Reopen Poll
                       </button>
                     )}
-                    <a href="/dashboard/results" className="btn btn-sm" style={{ background: 'var(--bg-input)' }}>
-                      View Results
-                    </a>
                   </div>
                 ) : (
                   <button className="btn btn-primary btn-sm" onClick={() => createPoll(cat.id)}>

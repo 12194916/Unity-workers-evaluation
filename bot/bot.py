@@ -83,8 +83,9 @@ def send_poll_to_user(poll, chat_id):
     month_uz = MONTHS_UZ[poll["month"]] if 1 <= poll["month"] <= 12 else str(poll["month"])
 
     question = (
-        f"Who is the best {category_name} for {month_en} {poll['year']}?\n"
-        f"{month_uz} {poll['year']} oyi uchun {category_name} kimga ovoz berasiz?"
+        f"Best {category_name} - {month_en} {poll['year']}\n"
+        f"{poll['year']}-yil {month_uz.lower()} oyi uchun {category_name} kimga ovoz berasiz?\n"
+        f"You can change your vote anytime / Ovozni o'zgartirish mumkin"
     )
 
     options = [w["name"] for w in workers]
