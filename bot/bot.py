@@ -84,8 +84,7 @@ def send_poll_to_user(poll, chat_id):
 
     question = (
         f"Best {category_name} - {month_en} {poll['year']}\n"
-        f"{poll['year']}-yil {month_uz.lower()} oyi uchun {category_name} kimga ovoz berasiz?\n"
-        f"You can change your vote anytime / Ovozni o'zgartirish mumkin"
+        f"{poll['year']}-yil {month_uz.lower()} oyi uchun {category_name} kimga ovoz berasiz?"
     )
 
     options = [w["name"] for w in workers]
@@ -129,6 +128,10 @@ def handle_poll_answer(poll_answer):
 
     poll_id = poll["id"]
     worker_ids_order = poll.get("worker_ids_order") or []
+
+    # Ignore votes on closed polls
+    if poll.get("status") != "active":
+        return
 
     # User retracted their vote
     if not option_ids:
@@ -197,14 +200,7 @@ def background_loop():
                 category_name = poll["categories"]["name"] if poll.get("categories") else "Unknown"
                 logger.info(f"Auto-closing poll: {category_name} (24h expired)")
 
-                # Stop native polls on all sent messages
-                messages = db.get_poll_messages(poll["id"])
-                for msg in messages:
-                    try:
-                        bot.stop_poll(msg["chat_id"], msg["message_id"])
-                    except Exception as e:
-                        logger.debug(f"Could not stop poll {msg['message_id']}: {e}")
-
+                # Close in DB only — don't stop_poll so no "Final results" shown
                 db.close_poll(poll["id"])
 
                 # Notify admin
