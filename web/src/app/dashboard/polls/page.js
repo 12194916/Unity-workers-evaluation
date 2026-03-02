@@ -56,42 +56,28 @@ export default function PollsPage() {
         setError(err.message)
       }
     } else {
-      setSuccess('Poll created! The bot will pick it up and post it in the group.')
+      setSuccess('Poll created! Bot will send it to all users shortly.')
       loadData()
     }
   }
 
-  async function closePoll(pollId) {
-    if (!confirm('Close this poll? Voting will stop.')) return
+  async function deletePoll(pollId) {
+    if (!confirm('Delete this poll? All votes will be lost.')) return
     setError('')
 
-    const { error: err } = await supabase
-      .from('polls')
-      .update({ status: 'closed', closed_at: new Date().toISOString() })
-      .eq('id', pollId)
-
-    if (err) {
-      setError(err.message)
-    } else {
-      loadData()
-    }
-  }
-
-  async function reopenPoll(pollId) {
-    setError('')
-
-    // Clear old poll messages so bot sends fresh polls to all users
+    // Delete related records first, then the poll
     await supabase.from('poll_messages').delete().eq('poll_id', pollId)
+    await supabase.from('votes').delete().eq('poll_id', pollId)
 
     const { error: err } = await supabase
       .from('polls')
-      .update({ status: 'active', closed_at: null, broadcast_at: null, worker_ids_order: null })
+      .delete()
       .eq('id', pollId)
 
     if (err) {
       setError(err.message)
     } else {
-      setSuccess('Poll reopened! Bot will send it to all users shortly.')
+      setSuccess('Poll deleted.')
       loadData()
     }
   }
@@ -146,15 +132,9 @@ export default function PollsPage() {
 
                 {poll ? (
                   <div style={{ display: 'flex', gap: 10 }}>
-                    {poll.status === 'active' ? (
-                      <button className="btn btn-danger btn-sm" onClick={() => closePoll(poll.id)}>
-                        Close Poll
-                      </button>
-                    ) : (
-                      <button className="btn btn-primary btn-sm" onClick={() => reopenPoll(poll.id)}>
-                        Reopen Poll
-                      </button>
-                    )}
+                    <button className="btn btn-danger btn-sm" onClick={() => deletePoll(poll.id)}>
+                      Delete Poll
+                    </button>
                   </div>
                 ) : (
                   <button className="btn btn-primary btn-sm" onClick={() => createPoll(cat.id)}>
