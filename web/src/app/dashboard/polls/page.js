@@ -61,6 +61,23 @@ export default function PollsPage() {
     }
   }
 
+  async function closePoll(pollId) {
+    if (!confirm('Close this poll? Voting will stop.')) return
+    setError('')
+
+    const { error: err } = await supabase
+      .from('polls')
+      .update({ status: 'closed', closed_at: new Date().toISOString() })
+      .eq('id', pollId)
+
+    if (err) {
+      setError(err.message)
+    } else {
+      setSuccess('Poll closed.')
+      loadData()
+    }
+  }
+
   async function deletePoll(pollId) {
     if (!confirm('Delete this poll? All votes will be lost.')) return
     setError('')
@@ -132,7 +149,12 @@ export default function PollsPage() {
 
                 {poll ? (
                   <div style={{ display: 'flex', gap: 10 }}>
-                    <button className="btn btn-danger btn-sm" onClick={() => deletePoll(poll.id)}>
+                    {poll.status === 'active' && (
+                      <button className="btn btn-danger btn-sm" onClick={() => closePoll(poll.id)}>
+                        Close Poll
+                      </button>
+                    )}
+                    <button className="btn btn-sm" style={{ background: 'var(--bg-input)' }} onClick={() => deletePoll(poll.id)}>
                       Delete Poll
                     </button>
                   </div>
